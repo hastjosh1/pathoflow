@@ -1,0 +1,1 @@
+{"name":"PathoFlow","description":"An offline-first pathology workflow app for phlebotomists to register patients and send collection details to labs via WhatsApp.","requestFramePermissions":[],"majorCapabilities":["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]}
