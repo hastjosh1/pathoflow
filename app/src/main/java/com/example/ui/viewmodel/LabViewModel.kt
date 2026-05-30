@@ -36,6 +36,9 @@ class LabViewModel(
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
+    private val _isConfigured = MutableStateFlow(false)
+    val isConfigured: StateFlow<Boolean> = _isConfigured.asStateFlow()
+
     private val _customUpiQrPath = MutableStateFlow<String?>(null)
     val customUpiQrPath: StateFlow<String?> = _customUpiQrPath.asStateFlow()
 
@@ -103,15 +106,8 @@ class LabViewModel(
         val sp = application.getSharedPreferences("accurate_lab_prefs", Context.MODE_PRIVATE)
         _customUpiQrPath.value = sp.getString("custom_upi_qr_path", null)
         _updateServerUrl.value = sp.getString("update_server_url", "https://hastjosh1.github.io/pathoflow/version.json") ?: "https://hastjosh1.github.io/pathoflow/version.json"
-        val savedUsername = sp.getString("remembered_username", null)
-        val savedRole = sp.getString("remembered_role", null)
-        val savedDisplayName = sp.getString("remembered_display_name", null)
-        if (savedUsername != null && savedRole != null && savedDisplayName != null) {
-            // Auto-login on startup
-            _currentUser.value = User(savedUsername, "", savedRole, savedDisplayName)
-            _isLoggedIn.value = true
-            _currentNavDestination.value = "dashboard"
-        }
+        val isConfiguredVal = sp.getBoolean("is_configured", false)
+        _isConfigured.value = isConfiguredVal
 
         val customTestsSeeded = sp.getBoolean("custom_tests_seeded_v4", false)
         if (!customTestsSeeded) {
@@ -177,6 +173,28 @@ class LabViewModel(
         val sp = getApplication<Application>().getSharedPreferences("accurate_lab_prefs", Context.MODE_PRIVATE)
         sp.edit().putString("custom_upi_qr_path", path).apply()
         _customUpiQrPath.value = path
+    }
+
+    fun saveOnboardingSettings(labName: String, upiId: String, phoneNumbers: String, customQrPath: String?) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val currentSettings = settingsState.value
+            val updatedSettings = currentSettings.copy(
+                labUpiName = labName.trim(),
+                labUpiId = upiId.trim(),
+                labWhatsAppNumbersString = phoneNumbers.trim()
+            )
+            repository.saveSettings(updatedSettings)
+            
+            val sp = getApplication<Application>().getSharedPreferences("accurate_lab_prefs", Context.MODE_PRIVATE)
+            sp.edit()
+                .putBoolean("is_configured", true)
+                .putString("custom_upi_qr_path", customQrPath)
+                .apply()
+                
+            _customUpiQrPath.value = customQrPath
+            _isConfigured.value = true
+            _currentNavDestination.value = "dashboard"
+        }
     }
 
 

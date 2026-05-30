@@ -36,8 +36,8 @@ class MainActivity : ComponentActivity() {
                         currentDest == "splash" -> {
                             SplashScreen(viewModel = viewModel)
                         }
-                        currentDest == "login" -> {
-                            LoginScreen(viewModel = viewModel)
+                        currentDest == "setup" -> {
+                            OnboardingSetupScreen(viewModel = viewModel)
                         }
                         currentDest == "dashboard" -> {
                             DashboardScreen(viewModel = viewModel)

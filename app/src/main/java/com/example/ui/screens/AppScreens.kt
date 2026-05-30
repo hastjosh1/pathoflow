@@ -56,10 +56,10 @@ fun SplashScreen(viewModel: LabViewModel) {
     LaunchedEffect(key1 = true) {
         startAnimation = true
         delay(1800)
-        if (viewModel.isLoggedIn.value) {
+        if (viewModel.isConfigured.value) {
             viewModel.navigateTo("dashboard")
         } else {
-            viewModel.navigateTo("login")
+            viewModel.navigateTo("setup")
         }
     }
 
@@ -108,169 +108,232 @@ fun SplashScreen(viewModel: LabViewModel) {
 }
 
 // ============================================
-// 2. LOGIN SCREEN
+// 2. ONBOARDING SETUP SCREEN
 // ============================================
 @Composable
-fun LoginScreen(viewModel: LabViewModel) {
-    var username by remember { mutableStateOf("") }
-    var pin by remember { mutableStateOf("") }
-    var rememberMe by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+fun OnboardingSetupScreen(viewModel: LabViewModel) {
+    var labName by remember { mutableStateOf("") }
+    var upiId by remember { mutableStateOf("accuratelab@okhdfcbank") }
+    var phoneNo by remember { mutableStateOf("9876543210") }
+    var uploadedQrPath by remember { mutableStateOf<String?>(null) }
+    var validationError by remember { mutableStateOf<String?>(null) }
     
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val activeLang by viewModel.activeLanguage.collectAsState()
-
+    
+    val qrImageLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            val localPath = viewModel.copyImageToInternalStorage(context, it)
+            if (localPath != null) {
+                uploadedQrPath = localPath
+            }
+        }
+    }
+    
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState()),
+            .background(
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f)
+                    )
+                )
+            )
+            .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp)
-                .widthIn(max = 500.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .widthIn(max = 500.dp)
+                .verticalScroll(rememberScrollState()),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
-            // Language toggler inside Login Screen
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                TextButton(
-                    onClick = { viewModel.toggleLanguage() },
-                    modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                Image(
+                    painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.pathoflow_logo),
+                    contentDescription = "PathoFlow Logo",
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                )
+                
+                Text(
+                    text = "Configure Your Lab Companion",
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center
+                )
+                
+                Text(
+                    text = "Configure your laboratory branding, static payment UPI ID, and primary contact number to initialize the system.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Lab/Owner Name
+                OutlinedTextField(
+                    value = labName,
+                    onValueChange = { labName = it },
+                    label = { Text("Laboratory/Phlebotomist Name *") },
+                    leadingIcon = { Icon(Icons.Filled.Person, contentDescription = "Lab") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                // Primary WhatsApp Number
+                OutlinedTextField(
+                    value = phoneNo,
+                    onValueChange = { phoneNo = it },
+                    label = { Text("WhatsApp Phone Number *") },
+                    leadingIcon = { Icon(Icons.Filled.Phone, contentDescription = "Phone") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                // UPI ID
+                OutlinedTextField(
+                    value = upiId,
+                    onValueChange = { upiId = it },
+                    label = { Text("Static Merchant UPI ID *") },
+                    leadingIcon = { Icon(Icons.Filled.AccountBalanceWallet, contentDescription = "UPI") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                // Custom UPI QR Code Card
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Icon(Icons.Filled.Language, contentDescription = "Lang", modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(if (activeLang == Language.ENGLISH) "ગુજરાતી" else "English", fontSize = 12.sp)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(30.dp))
-            
-            Image(
-                painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.pathoflow_logo),
-                contentDescription = "PathoFlow Logo",
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(CircleShape)
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = translate("secure_login", activeLang),
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.primary
-            )
-            
-            Text(
-                text = "Accurate Lab Collection App",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Username input
-            OutlinedTextField(
-                value = username,
-                onValueChange = { username = it },
-                label = { Text(translate("username", activeLang)) },
-                leadingIcon = { Icon(Icons.Filled.Person, contentDescription = "User") },
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("username_input"),
-                colors = OutlinedTextFieldDefaults.colors()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // PIN input
-            OutlinedTextField(
-                value = pin,
-                onValueChange = { pin = it },
-                label = { Text(translate("password", activeLang)) },
-                leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = "Lock") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                visualTransformation = PasswordVisualTransformation(),
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("pin_input")
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Remember Me
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(
-                    checked = rememberMe,
-                    onCheckedChange = { rememberMe = it },
-                    modifier = Modifier.testTag("remember_me_checkbox")
-                )
-                Text(
-                    text = translate("remember_me", activeLang),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            if (errorMessage != null) {
-                Text(
-                    text = errorMessage!!,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-            }
-
-            // Submit Button
-            Button(
-                onClick = {
-                    if (username.isBlank() || pin.isBlank()) {
-                        errorMessage = "Please enter both credentials"
-                        return@Button
-                    }
-                    viewModel.attemptLogin(username, pin, rememberMe) { success, msg ->
-                        if (!success) {
-                            errorMessage = msg
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "Static Merchant UPI QR Code",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        
+                        if (uploadedQrPath != null) {
+                            val imgFile = java.io.File(uploadedQrPath!!)
+                            if (imgFile.exists()) {
+                                val bitmap = android.graphics.BitmapFactory.decodeFile(imgFile.absolutePath)
+                                if (bitmap != null) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Image(
+                                            bitmap = bitmap.asImageBitmap(),
+                                            contentDescription = "Uploaded QR Code",
+                                            modifier = Modifier
+                                                .size(80.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(Color.White)
+                                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                                        )
+                                        Column(
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Text("QR Active", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                            OutlinedButton(
+                                                onClick = { uploadedQrPath = null },
+                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                                            ) {
+                                                Icon(Icons.Filled.Delete, contentDescription = "Remove QR", modifier = Modifier.size(16.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Remove", fontSize = 11.sp)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            Button(
+                                onClick = { qrImageLauncher.launch("image/*") },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Filled.Add, contentDescription = "Upload QR")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Upload QR Code Image", fontWeight = FontWeight.SemiBold)
+                            }
                         }
                     }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-                    .testTag("login_button"),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(translate("login", activeLang), style = MaterialTheme.typography.titleMedium)
-            }
-
-            Spacer(modifier = Modifier.height(40.dp))
-            
-            // Helpful Setup Demo Note
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
+                }
+                
+                if (validationError != null) {
                     Text(
-                        text = "Demo Credentials (Offline Validated):",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.primary
+                        text = validationError!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center
                     )
-                    Text("• Phlebotomist User: amit / PIN: 0000", fontSize = 11.sp)
-                    Text("• Admin User: admin / PIN: 1234", fontSize = 11.sp)
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Submit Button
+                Button(
+                    onClick = {
+                        if (labName.isBlank()) {
+                            validationError = "Please enter Laboratory/Owner Name!"
+                            return@Button
+                        }
+                        if (phoneNo.trim().length < 10) {
+                            validationError = "Please enter a valid 10-digit WhatsApp phone number!"
+                            return@Button
+                        }
+                        if (upiId.isBlank()) {
+                            validationError = "Please enter your UPI ID!"
+                            return@Button
+                        }
+                        
+                        viewModel.saveOnboardingSettings(
+                            labName = labName,
+                            upiId = upiId,
+                            phoneNumbers = phoneNo,
+                            customQrPath = uploadedQrPath
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Save & Get Started", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                 }
             }
         }
@@ -283,6 +346,7 @@ fun LoginScreen(viewModel: LabViewModel) {
 @Composable
 fun DashboardScreen(viewModel: LabViewModel) {
     val activeLang by viewModel.activeLanguage.collectAsState()
+    val settings by viewModel.settingsState.collectAsState()
     val user by viewModel.currentUser.collectAsState()
     val patients by viewModel.allPatients.collectAsState()
 
@@ -370,7 +434,7 @@ fun DashboardScreen(viewModel: LabViewModel) {
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = (user?.displayName ?: "U").take(1).uppercase(),
+                            text = (settings.labUpiName.ifBlank { "L" }).take(1).uppercase(),
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
                             fontSize = 20.sp
@@ -379,7 +443,7 @@ fun DashboardScreen(viewModel: LabViewModel) {
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Hello, ${user?.displayName ?: "Phlebotomist"}",
+                            text = "Hello, ${settings.labUpiName.ifBlank { "Phlebotomist" }}",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                         )
                         Text(
@@ -2992,8 +3056,8 @@ fun HeaderToolbar(viewModel: LabViewModel, titleKey: String) {
             IconButton(onClick = { viewModel.toggleLanguage() }) {
                 Icon(Icons.Filled.Language, contentDescription = "Switch Fast Language", tint = MaterialTheme.colorScheme.primary)
             }
-            IconButton(onClick = { viewModel.logout() }) {
-                Icon(Icons.Filled.ExitToApp, contentDescription = "Log out Fast", tint = MaterialTheme.colorScheme.error)
+            IconButton(onClick = { viewModel.navigateTo("setup") }) {
+                Icon(Icons.Filled.Settings, contentDescription = "Configure Lab", tint = MaterialTheme.colorScheme.primary)
             }
         }
     )
