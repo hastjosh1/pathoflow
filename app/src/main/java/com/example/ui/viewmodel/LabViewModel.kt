@@ -39,7 +39,7 @@ class LabViewModel(
     private val _customUpiQrPath = MutableStateFlow<String?>(null)
     val customUpiQrPath: StateFlow<String?> = _customUpiQrPath.asStateFlow()
 
-    private val _updateServerUrl = MutableStateFlow("https://hastjoshi.github.io/pathoflow-updates/version.json")
+    private val _updateServerUrl = MutableStateFlow("https://hastjosh1.github.io/pathoflow/version.json")
     val updateServerUrl: StateFlow<String> = _updateServerUrl.asStateFlow()
 
     // Config & Preferences (Defaults fallback inside setting flow)
@@ -102,7 +102,7 @@ class LabViewModel(
     init {
         val sp = application.getSharedPreferences("accurate_lab_prefs", Context.MODE_PRIVATE)
         _customUpiQrPath.value = sp.getString("custom_upi_qr_path", null)
-        _updateServerUrl.value = sp.getString("update_server_url", "https://hastjoshi.github.io/pathoflow-updates/version.json") ?: "https://hastjoshi.github.io/pathoflow-updates/version.json"
+        _updateServerUrl.value = sp.getString("update_server_url", "https://hastjosh1.github.io/pathoflow/version.json") ?: "https://hastjosh1.github.io/pathoflow/version.json"
         val savedUsername = sp.getString("remembered_username", null)
         val savedRole = sp.getString("remembered_role", null)
         val savedDisplayName = sp.getString("remembered_display_name", null)
