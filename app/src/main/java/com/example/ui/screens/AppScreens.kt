@@ -291,6 +291,9 @@ fun DashboardScreen(viewModel: LabViewModel) {
     var showUpdateDialog by remember { mutableStateOf(false) }
     var latestVersionName by remember { mutableStateOf("") }
     var apkDownloadUrl by remember { mutableStateOf("") }
+    var isDownloading by remember { mutableStateOf(false) }
+    var downloadProgress by remember { mutableStateOf(0f) }
+    var downloadError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(currentUpdateUrl) {
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
@@ -549,7 +552,11 @@ fun DashboardScreen(viewModel: LabViewModel) {
 
         if (showUpdateDialog) {
             AlertDialog(
-                onDismissRequest = { showUpdateDialog = false },
+                onDismissRequest = { 
+                    if (!isDownloading) {
+                        showUpdateDialog = false 
+                    }
+                },
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
@@ -559,37 +566,178 @@ fun DashboardScreen(viewModel: LabViewModel) {
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("New Update Available!", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(
+                            text = if (isDownloading) "Downloading Update..." else "New Update Available!", 
+                            fontWeight = FontWeight.Bold, 
+                            fontSize = 16.sp
+                        )
                     }
                 },
                 text = {
                     Column {
-                        Text("A fresh new update (Version $latestVersionName) is ready for PathoFlow.", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("This internal update includes critical workflow optimizations, logo assets, and new diagnostic test listings.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (isDownloading) {
+                            Text("Downloading PathoFlow Version $latestVersionName directly to your device...", fontSize = 13.sp)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            LinearProgressIndicator(
+                                progress = downloadProgress,
+                                modifier = Modifier.fillMaxWidth(),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "${(downloadProgress * 100).toInt()}% completed", 
+                                fontSize = 11.sp, 
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.align(Alignment.End)
+                            )
+                            
+                            if (downloadError != null) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Error: $downloadError", 
+                                    color = MaterialTheme.colorScheme.error, 
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        } else {
+                            Text("A fresh new update (Version $latestVersionName) is ready for PathoFlow.", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("This internal update includes critical workflow optimizations, logo assets, and new diagnostic test listings.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 },
                 confirmButton = {
-                    Button(
-                        onClick = {
-                            try {
-                                val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(apkDownloadUrl))
-                                context.startActivity(intent)
-                            } catch (e: java.lang.Exception) {
-                                android.util.Log.e("OTAUpdate", "Failed to open apk download url", e)
+                    if (isDownloading) {
+                        if (downloadError != null) {
+                            Button(
+                                onClick = {
+                                    downloadError = null
+                                    downloadProgress = 0f
+                                    downloadAndInstallApk(
+                                        context = context,
+                                        downloadUrl = apkDownloadUrl,
+                                        onProgress = { downloadProgress = it },
+                                        onFinished = { 
+                                            isDownloading = false
+                                            showUpdateDialog = false
+                                        },
+                                        onError = { downloadError = it }
+                                    )
+                                }
+                            ) {
+                                Text("Retry", fontWeight = FontWeight.Bold)
                             }
-                            showUpdateDialog = false
                         }
-                    ) {
-                        Text("Update Now", fontWeight = FontWeight.Bold)
+                    } else {
+                        Button(
+                            onClick = {
+                                isDownloading = true
+                                downloadError = null
+                                downloadProgress = 0f
+                                downloadAndInstallApk(
+                                    context = context,
+                                    downloadUrl = apkDownloadUrl,
+                                    onProgress = { downloadProgress = it },
+                                    onFinished = { 
+                                        isDownloading = false
+                                        showUpdateDialog = false
+                                    },
+                                    onError = { downloadError = it }
+                                )
+                            }
+                        ) {
+                            Text("Update Now", fontWeight = FontWeight.Bold)
+                        }
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showUpdateDialog = false }) {
-                        Text("Later", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (isDownloading) {
+                        if (downloadError != null) {
+                            TextButton(
+                                onClick = { 
+                                    isDownloading = false
+                                    showUpdateDialog = false 
+                                }
+                            ) {
+                                Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    } else {
+                        TextButton(onClick = { showUpdateDialog = false }) {
+                            Text("Later", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
             )
+        }
+    }
+}
+
+fun downloadAndInstallApk(
+    context: Context,
+    downloadUrl: String,
+    onProgress: (Float) -> Unit,
+    onFinished: () -> Unit,
+    onError: (String) -> Unit
+) {
+    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        try {
+            val url = java.net.URL(downloadUrl)
+            val connection = url.openConnection() as java.net.HttpURLConnection
+            connection.connectTimeout = 15000
+            connection.readTimeout = 15000
+            connection.connect()
+            
+            if (connection.responseCode != 200) {
+                onError("Server error: ${connection.responseCode}")
+                return@launch
+            }
+            
+            val fileLength = connection.contentLength
+            val inputStream = connection.inputStream
+            
+            val outputFile = java.io.File(context.cacheDir, "update.apk")
+            if (outputFile.exists()) {
+                outputFile.delete()
+            }
+            
+            val outputStream = java.io.FileOutputStream(outputFile)
+            val data = ByteArray(4096)
+            var total: Long = 0
+            var count: Int
+            while (inputStream.read(data).also { count = it } != -1) {
+                total += count
+                if (fileLength > 0) {
+                    onProgress(total.toFloat() / fileLength.toFloat())
+                }
+                outputStream.write(data, 0, count)
+            }
+            
+            outputStream.flush()
+            outputStream.close()
+            inputStream.close()
+            
+            onFinished()
+            
+            val apkUri = androidx.core.content.FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                outputFile
+            )
+            
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            
+        } catch (e: Exception) {
+            android.util.Log.e("OTAUpdate", "Download/Install failed", e)
+            onError(e.localizedMessage ?: "Unknown error")
         }
     }
 }
