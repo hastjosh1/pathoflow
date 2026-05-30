@@ -383,7 +383,7 @@ fun DashboardScreen(viewModel: LabViewModel) {
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                         )
                         Text(
-                            text = "Accurate Lab Field Companion • Offline Ready",
+                            text = "Accurate Lab Field Companion • Offline Ready • v1.2",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
