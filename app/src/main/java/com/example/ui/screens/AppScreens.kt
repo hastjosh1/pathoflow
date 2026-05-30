@@ -319,6 +319,7 @@ fun DashboardScreen(viewModel: LabViewModel) {
                             packageInfo.versionCode
                         }
                         
+                        android.util.Log.d("OTAUpdate", "Check - Remote: $remoteCode, Local: $localCode")
                         if (remoteCode != null && remoteCode > localCode && remoteName != null && remoteUrl != null) {
                             latestVersionName = remoteName
                             apkDownloadUrl = remoteUrl
