@@ -2532,6 +2532,14 @@ fun SettingsScreen(viewModel: LabViewModel) {
     val settings by viewModel.settingsState.collectAsState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val appVersionName = remember {
+        try {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            packageInfo.versionName ?: "1.3"
+        } catch (e: Exception) {
+            "1.3"
+        }
+    }
 
     var upiId by remember { mutableStateOf("") }
     var upiName by remember { mutableStateOf("") }
@@ -2785,6 +2793,110 @@ fun SettingsScreen(viewModel: LabViewModel) {
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    var isCheckingForUpdate by remember { mutableStateOf(false) }
+                    var checkStatusMsg by remember { mutableStateOf<String?>(null) }
+                    var hasUpdateAvailable by remember { mutableStateOf(false) }
+                    var remoteUpdateVersion by remember { mutableStateOf("") }
+                    var remoteUpdateUrl by remember { mutableStateOf("") }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                if (updateServerUrlInput.isNotBlank()) {
+                                    isCheckingForUpdate = true
+                                    checkStatusMsg = "Checking..."
+                                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                        try {
+                                            val url = java.net.URL(updateServerUrlInput)
+                                            val connection = url.openConnection() as java.net.HttpURLConnection
+                                            connection.connectTimeout = 4000
+                                            connection.readTimeout = 4000
+                                            connection.requestMethod = "GET"
+                                            if (connection.responseCode == 200) {
+                                                val jsonText = connection.inputStream.bufferedReader().use { it.readText() }
+                                                val codeRegex = "\"versionCode\"\\s*:\\s*(\\d+)".toRegex()
+                                                val nameRegex = "\"versionName\"\\s*:\\s*\"([^\"]+)\"".toRegex()
+                                                val urlRegex = "\"apkUrl\"\\s*:\\s*\"([^\"]+)\"".toRegex()
+
+                                                val remoteCode = codeRegex.find(jsonText)?.groupValues?.get(1)?.toIntOrNull()
+                                                val remoteName = nameRegex.find(jsonText)?.groupValues?.get(1)
+                                                val remoteUrl = urlRegex.find(jsonText)?.groupValues?.get(1)
+
+                                                val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                                                val localCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                                                    packageInfo.longVersionCode.toInt()
+                                                } else {
+                                                    @Suppress("DEPRECATION")
+                                                    packageInfo.versionCode
+                                                }
+
+                                                if (remoteCode != null && remoteCode > localCode && remoteName != null && remoteUrl != null) {
+                                                    hasUpdateAvailable = true
+                                                    remoteUpdateVersion = remoteName
+                                                    remoteUpdateUrl = remoteUrl
+                                                    checkStatusMsg = "Update Available: Version $remoteName!"
+                                                } else {
+                                                    hasUpdateAvailable = false
+                                                    checkStatusMsg = "Up to date (v$appVersionName)"
+                                                }
+                                            } else {
+                                                checkStatusMsg = "Server error ${connection.responseCode}"
+                                            }
+                                        } catch (e: Exception) {
+                                            checkStatusMsg = "Network connection failed"
+                                        } finally {
+                                            isCheckingForUpdate = false
+                                        }
+                                    }
+                                } else {
+                                    checkStatusMsg = "Please enter a valid URL."
+                                }
+                            },
+                            enabled = !isCheckingForUpdate,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.CloudDownload,
+                                contentDescription = "Check Update",
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Check for Update", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        if (hasUpdateAvailable) {
+                            Button(
+                                onClick = {
+                                    val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(remoteUpdateUrl))
+                                    context.startActivity(intent)
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Filled.SystemUpdate, contentDescription = "Install Update", tint = Color.White, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Install Update", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                        }
+                    }
+
+                    if (checkStatusMsg != null) {
+                        Text(
+                            text = checkStatusMsg!!,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (hasUpdateAvailable) Color(0xFF2E7D32) else if (checkStatusMsg!!.startsWith("Up to date")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                            ),
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
+                    }
                 }
             }
 
