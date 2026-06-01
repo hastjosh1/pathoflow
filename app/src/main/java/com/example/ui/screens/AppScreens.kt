@@ -127,6 +127,26 @@ fun OnboardingSetupScreen(viewModel: LabViewModel) {
     var validationError by remember { mutableStateOf<String?>(null) }
     
     val context = LocalContext.current
+    val settings by viewModel.settingsState.collectAsState()
+    val customQrPath by viewModel.customUpiQrPath.collectAsState()
+
+    LaunchedEffect(settings) {
+        if (settings.labUpiName.isNotBlank()) {
+            labName = settings.labUpiName
+        }
+        if (settings.labUpiId.isNotBlank()) {
+            upiId = settings.labUpiId
+        }
+        if (settings.labWhatsAppNumbersString.isNotBlank()) {
+            phoneNo = settings.labWhatsAppNumbersString
+        }
+    }
+
+    LaunchedEffect(customQrPath) {
+        if (customQrPath != null) {
+            uploadedQrPath = customQrPath
+        }
+    }
     
     val qrImageLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
@@ -3227,7 +3247,7 @@ fun HeaderToolbar(viewModel: LabViewModel, titleKey: String) {
             IconButton(onClick = { viewModel.toggleLanguage() }) {
                 Icon(Icons.Filled.Language, contentDescription = "Switch Fast Language", tint = MaterialTheme.colorScheme.primary)
             }
-            IconButton(onClick = { viewModel.navigateTo("setup") }) {
+            IconButton(onClick = { viewModel.navigateTo("settings") }) {
                 Icon(Icons.Filled.Settings, contentDescription = "Configure Lab", tint = MaterialTheme.colorScheme.primary)
             }
         }
