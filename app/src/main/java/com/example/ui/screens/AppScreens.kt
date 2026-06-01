@@ -3243,12 +3243,27 @@ fun HeaderToolbar(viewModel: LabViewModel, titleKey: String) {
     CustomTopAppBar(
         title = translate(titleKey, activeLang),
         actions = {
-            // Language Fast Switcher Header Tool
-            IconButton(onClick = { viewModel.toggleLanguage() }) {
-                Icon(Icons.Filled.Language, contentDescription = "Switch Fast Language", tint = MaterialTheme.colorScheme.primary)
-            }
-            IconButton(onClick = { viewModel.navigateTo("settings") }) {
-                Icon(Icons.Filled.Settings, contentDescription = "Configure Lab", tint = MaterialTheme.colorScheme.primary)
+            Row(
+                modifier = androidx.compose.ui.Modifier.padding(end = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Language Fast Switcher Header Tool
+                IconButton(
+                    onClick = { viewModel.toggleLanguage() },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), CircleShape)
+                ) {
+                    Icon(Icons.Filled.Language, contentDescription = "Switch Fast Language", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                }
+                IconButton(
+                    onClick = { viewModel.navigateTo("settings") },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), CircleShape)
+                ) {
+                    Icon(Icons.Filled.Settings, contentDescription = "Configure Lab", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                }
             }
         }
     )
