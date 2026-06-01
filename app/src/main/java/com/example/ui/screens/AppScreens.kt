@@ -142,20 +142,26 @@ fun OnboardingSetupScreen(viewModel: LabViewModel) {
                     )
                 )
             )
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
+            .imePadding()
     ) {
-        Card(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 500.dp)
-                .verticalScroll(rememberScrollState()),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 500.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -338,6 +344,7 @@ fun OnboardingSetupScreen(viewModel: LabViewModel) {
             }
         }
     }
+}
 }
 
 // ============================================
@@ -1195,8 +1202,16 @@ fun PatientEntryScreen(viewModel: LabViewModel, originalPatientIdToDuplicateOrEd
                     }
 
                     if (testSearchQuery.isBlank()) {
-                        // Shortcuts Panel (Pinned/Favorites)
-                        Text("Pin / Favorites Shortcuts:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        val commonTestNames = listOf(
+                            "HAEMOGRAM (CBC)", "HBA1C", "BLOOD GROUP", 
+                            "FASTING SUGAR", "LIVER FUNCTION TESTS (LFT)", "URINE ANALYSIS"
+                        )
+                        val frequentTests = allDbTests.sortedWith(
+                            compareByDescending<TestItem> { it.usageCount }
+                                .thenByDescending { commonTestNames.contains(it.name) }
+                        ).take(6)
+
+                        Text("Frequently Used Shortcuts:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         FlowRow(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1204,8 +1219,7 @@ fun PatientEntryScreen(viewModel: LabViewModel, originalPatientIdToDuplicateOrEd
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            val pinnedTests = allDbTests.filter { it.isFavorite }
-                            pinnedTests.forEach { test ->
+                            frequentTests.forEach { test ->
                                 val isSelected = selectedTests.any { it.id == test.id }
                                 FilterChip(
                                     selected = isSelected,
@@ -1214,41 +1228,9 @@ fun PatientEntryScreen(viewModel: LabViewModel, originalPatientIdToDuplicateOrEd
                                     leadingIcon = {
                                         if (isSelected) {
                                             Icon(Icons.Filled.Check, contentDescription = "Checked", modifier = Modifier.size(12.dp))
-                                        } else {
-                                            Icon(Icons.Filled.Star, contentDescription = "Pinned", tint = Color(0xFFFFB300), modifier = Modifier.size(12.dp))
                                         }
                                     }
                                 )
-                            }
-                        }
-
-                        val frequentTests = allDbTests.filter { it.usageCount > 0 && !it.isFavorite }
-                            .sortedByDescending { it.usageCount }
-                            .take(5)
-
-                        if (frequentTests.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Frequently Used:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            FlowRow(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                frequentTests.forEach { test ->
-                                    val isSelected = selectedTests.any { it.id == test.id }
-                                    FilterChip(
-                                        selected = isSelected,
-                                        onClick = { viewModel.toggleTestSelection(test) },
-                                        label = { Text(test.name, fontSize = 11.sp) },
-                                        leadingIcon = {
-                                            if (isSelected) {
-                                                Icon(Icons.Filled.Check, contentDescription = "Checked", modifier = Modifier.size(12.dp))
-                                            }
-                                        }
-                                    )
-                                }
                             }
                         }
 
@@ -2128,19 +2110,7 @@ fun TestManagementScreen(viewModel: LabViewModel) {
                                     modifier = Modifier.fillMaxWidth().padding(12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    IconButton(
-                                        onClick = {
-                                            viewModel.updateTest(test.copy(isFavorite = !test.isFavorite))
-                                        }
-                                    ) {
-                                        Icon(
-                                            imageVector = if (test.isFavorite) Icons.Filled.Star else Icons.Outlined.Star,
-                                            contentDescription = "Pin Favorite",
-                                            tint = if (test.isFavorite) Color(0xFFFFB300) else Color.Gray
-                                        )
-                                    }
 
-                                    Spacer(modifier = Modifier.width(4.dp))
 
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(test.name, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
