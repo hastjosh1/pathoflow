@@ -66,7 +66,14 @@ fun SplashScreen(viewModel: LabViewModel) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.primary),
+            .background(
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primary,
+                        MaterialTheme.colorScheme.tertiary
+                    )
+                )
+            ),
         contentAlignment = Alignment.Center
     ) {
         AnimatedVisibility(
@@ -84,6 +91,7 @@ fun SplashScreen(viewModel: LabViewModel) {
                     modifier = Modifier
                         .size(140.dp)
                         .clip(CircleShape)
+                        .border(4.dp, Color.White.copy(alpha = 0.3f), CircleShape)
                 )
                 Spacer(modifier = Modifier.height(20.dp))
                 Text(
@@ -358,6 +366,14 @@ fun DashboardScreen(viewModel: LabViewModel) {
     val patients by viewModel.allPatients.collectAsState()
 
     val context = LocalContext.current
+    val appVersionName = remember {
+        try {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            packageInfo.versionName ?: "1.3"
+        } catch (e: Exception) {
+            "1.3"
+        }
+    }
     val currentUpdateUrl by viewModel.updateServerUrl.collectAsState()
     var showUpdateDialog by remember { mutableStateOf(false) }
     var latestVersionName by remember { mutableStateOf("") }
@@ -454,7 +470,7 @@ fun DashboardScreen(viewModel: LabViewModel) {
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                         )
                         Text(
-                            text = "Accurate Lab Field Companion • Offline Ready • v1.2",
+                            text = "Accurate Lab Field Companion • Offline Ready • v$appVersionName",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -501,26 +517,43 @@ fun DashboardScreen(viewModel: LabViewModel) {
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .height(100.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.secondaryContainer)
+                            .height(112.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(
+                                androidx.compose.ui.graphics.Brush.linearGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.tertiary
+                                    )
+                                )
+                            )
                             .clickable { viewModel.navigateTo("new_entry") }
                             .padding(12.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.Filled.Add,
-                                contentDescription = "New Patient",
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.size(28.dp)
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .background(Color.White.copy(alpha = 0.2f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Filled.Add,
+                                    contentDescription = "New Patient",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                translate("new_entry", activeLang),
+                                text = translate("new_entry", activeLang),
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White,
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -822,25 +855,42 @@ fun MetricCard(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.height(100.dp),
+        modifier = modifier
+            .height(112.dp)
+            .border(1.dp, color.copy(alpha = 0.15f), RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp),
+                .padding(14.dp),
             verticalArrangement = Arrangement.SpaceBetween
-                ) {
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = title, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Icon(imageVector = icon, contentDescription = title, tint = color, modifier = Modifier.size(20.dp))
+                Text(
+                    text = title, 
+                    fontSize = 11.sp, 
+                    fontWeight = FontWeight.Bold, 
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f).padding(end = 4.dp),
+                    maxLines = 2
+                )
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(color.copy(alpha = 0.1f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(imageVector = icon, contentDescription = title, tint = color, modifier = Modifier.size(18.dp))
+                }
             }
-            Text(text = value, fontSize = 22.sp, fontWeight = FontWeight.Black, color = color)
+            Text(text = value, fontSize = 20.sp, fontWeight = FontWeight.Black, color = color)
         }
     }
 }
@@ -994,9 +1044,11 @@ fun PatientEntryScreen(viewModel: LabViewModel, originalPatientIdToDuplicateOrEd
             // Unique Patient ID Display
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)),
+                shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
+                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
             ) {
                 Row(
                     modifier = Modifier.padding(12.dp),
@@ -1013,6 +1065,8 @@ fun PatientEntryScreen(viewModel: LabViewModel, originalPatientIdToDuplicateOrEd
             // Form Fields Card Container
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -1156,6 +1210,8 @@ fun PatientEntryScreen(viewModel: LabViewModel, originalPatientIdToDuplicateOrEd
             // ============================================
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -1416,6 +1472,8 @@ fun PatientEntryScreen(viewModel: LabViewModel, originalPatientIdToDuplicateOrEd
             // ============================================
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -1949,8 +2007,11 @@ fun TestManagementScreen(viewModel: LabViewModel) {
 
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
                     ) {
                         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Bulk Integration & CSV Tool", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
@@ -2104,6 +2165,8 @@ fun TestManagementScreen(viewModel: LabViewModel) {
                         items(displayTests) { test ->
                             Card(
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp)),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                             ) {
                                 Row(
@@ -2285,8 +2348,12 @@ fun ReportsScreen(viewModel: LabViewModel) {
             ) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                    modifier = Modifier.fillMaxWidth().widthIn(max = 400.dp)
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 400.dp)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(24.dp)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(24.dp),
@@ -2349,7 +2416,11 @@ fun ReportsScreen(viewModel: LabViewModel) {
                 // Summary Card Info
                 item {
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), RoundedCornerShape(16.dp)),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -2511,6 +2582,8 @@ fun SettingsScreen(viewModel: LabViewModel) {
             // Language Toggle Option Card
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Row(
@@ -2534,7 +2607,9 @@ fun SettingsScreen(viewModel: LabViewModel) {
 
             // Centralized Server Sync & Hardware Printer Note block
             Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f))
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
             ) {
                 Row(
                     modifier = Modifier.padding(12.dp),
@@ -2589,8 +2664,12 @@ fun SettingsScreen(viewModel: LabViewModel) {
             // ----------------------------------------------------
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                modifier = Modifier.fillMaxWidth().testTag("custom_qr_upload_card")
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                    .testTag("custom_qr_upload_card"),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -2677,8 +2756,12 @@ fun SettingsScreen(viewModel: LabViewModel) {
             // ----------------------------------------------------
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                modifier = Modifier.fillMaxWidth().testTag("ota_update_config_card")
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                    .testTag("ota_update_config_card"),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -2739,8 +2822,11 @@ fun SettingsScreen(viewModel: LabViewModel) {
 
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("My Profile Details", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
@@ -2804,8 +2890,11 @@ fun SettingsScreen(viewModel: LabViewModel) {
 
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(
@@ -3087,11 +3176,15 @@ fun PatientItemCard(
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth().testTag("patient_card_${patient.id}"),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+            .testTag("patient_card_${patient.id}"),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -3134,28 +3227,28 @@ fun PatientItemCard(
                 // Collection Status Badge
                 Surface(
                     color = statusColor.copy(alpha = 0.12f),
-                    shape = RoundedCornerShape(4.dp)
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
                         text = "Collection: $printStatus",
                         color = statusColor,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
 
                 // Payment Status Badge
                 Surface(
                     color = payColor.copy(alpha = 0.12f),
-                    shape = RoundedCornerShape(4.dp)
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
                         text = "Payment: $printPayStatus (₹${patient.amountPayable.toInt()})",
                         color = payColor,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
             }
@@ -3168,18 +3261,23 @@ fun PatientItemCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     // Update patient details (edit)
                     IconButton(
                         onClick = { onEdit(patient) },
-                        modifier = Modifier.size(34.dp).testTag("action_edit_${patient.id}")
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), CircleShape)
+                            .testTag("action_edit_${patient.id}")
                     ) {
                         Icon(Icons.Filled.Edit, contentDescription = "Edit Details", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                     }
                     // Quick Recopy/Duplicate
                     IconButton(
                         onClick = { onDuplicate(patient) },
-                        modifier = Modifier.size(34.dp)
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.08f), CircleShape)
                     ) {
                         Icon(Icons.Filled.ContentCopy, contentDescription = "Duplicate Patient", tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
                     }
@@ -3188,7 +3286,10 @@ fun PatientItemCard(
                 // WhatsApp sender
                 IconButton(
                     onClick = { onSendWhatsApp(context, patient) },
-                    modifier = Modifier.size(34.dp).background(Color(0xFF25D366), CircleShape).testTag("action_whatsapp_${patient.id}")
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(Color(0xFF25D366), CircleShape)
+                        .testTag("action_whatsapp_${patient.id}")
                 ) {
                     Icon(Icons.Filled.Share, contentDescription = "Export to Lab WhatsApp", tint = Color.White, modifier = Modifier.size(16.dp))
                 }
