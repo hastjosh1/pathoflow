@@ -1,6 +1,6 @@
-# 🌊 PathoFlow: Offline Pathology Collection Companion (v1.3.1)
+# 🌊 PathoFlow: Offline Pathology Collection Companion (v1.4.0)
 
-Welcome to **PathoFlow** — a high-performance clinical companion app designed specifically for phlebotomists and clinical laboratory operators. 
+Welcome to **PathoFlow** — a high-performance, single-user clinical companion app designed specifically for phlebotomists and clinical laboratory operators. 
 
 PathoFlow is built to work **100% offline**, allowing you to seamlessly register patients, manage diagnostic directories, check out with payment confirmation, and transmit full clinical records directly to your laboratory's WhatsApp in one unified send flow!
 
@@ -9,50 +9,46 @@ PathoFlow is built to work **100% offline**, allowing you to seamlessly register
 
 ---
 
-## 🎨 Premium Visual Aesthetics (v1.3.1 Upgrades)
-PathoFlow is designed with a premium, state-of-the-art medical clinic layout:
-* **Vertical Gradients**: SplashScreen and onboarding setup screens render dynamic gradients blending clinician-teal and slate color palettes.
-* **Unified Rounded Cards**: Every patient entry, metric grid, and text form utilizes cohesive `RoundedCornerShape(16.dp)` configurations and thin borders.
-* **Vibrant Quick Actions**: Primary buttons (like "New Patient Entry") utilize primary-to-tertiary linear gradients to guide phlebotomists intuitively.
-* **Transparent Action Badges**: Actions (Edit, Recopy, WhatsApp export) feature circular semi-transparent backgrounds to reduce visual clutter.
+## 🛠️ Modular Screen Architecture (Refactored in v1.4.0)
+To maximize clean code, maintainability, and compilation speeds, the giant 3,514-line god-file `AppScreens.kt` has been split into **8 modular, dedicated screen components** under `com.example.ui.screens`:
+
+* 🚪 [SplashScreen.kt](file:///Users/hastjoshi/antigravity/PathoFlow/app/src/main/java/com/example/ui/screens/SplashScreen.kt): Vibrant startup entry with vertical gradients and outlines.
+* ⚙️ [OnboardingSetupScreen.kt](file:///Users/hastjoshi/antigravity/PathoFlow/app/src/main/java/com/example/ui/screens/OnboardingSetupScreen.kt): Initial clinical configuration panel equipped with automated settings loading fail-safes.
+* 📊 [DashboardScreen.kt](file:///Users/hastjoshi/antigravity/PathoFlow/app/src/main/java/com/example/ui/screens/DashboardScreen.kt): Clinic metrics grid, dynamic app version header, and updates notifier.
+* 👤 [PatientEntryScreen.kt](file:///Users/hastjoshi/antigravity/PathoFlow/app/src/main/java/com/example/ui/screens/PatientEntryScreen.kt): Detailed patient collection builder featuring search optimizations and mandatory phone validations.
+* 🧪 [TestManagementScreen.kt](file:///Users/hastjoshi/antigravity/PathoFlow/app/src/main/java/com/example/ui/screens/TestManagementScreen.kt): Diagnostic catalog controller with bulk quoted CSV synchronization tools.
+* 📈 [ReportsScreen.kt](file:///Users/hastjoshi/antigravity/PathoFlow/app/src/main/java/com/example/ui/screens/ReportsScreen.kt): Dynamic daily clinical collections and estimated/realized revenue trackers.
+* 🔧 [SettingsScreen.kt](file:///Users/hastjoshi/antigravity/PathoFlow/app/src/main/java/com/example/ui/screens/SettingsScreen.kt): Central administrative control card and manual OTA updates checker.
+* 🧱 [SharedComponents.kt](file:///Users/hastjoshi/antigravity/PathoFlow/app/src/main/java/com/example/ui/screens/SharedComponents.kt): Core custom layouts, rounded card shapes, top bars, and status badges.
 
 ---
 
-## 🚀 Key Clinical Features
-
-### 1. 🔍 Buttery-Smooth Diagnostic search & Selected Chips
-* **Zero Lag Catalog**: The massive 100+ diagnostic test directory is completely hidden by default when the search is blank, preventing rendering lag on mobile devices.
-* **Favorites & Smart Shortcuts**: Displays a static "Pinned Favorites" chip row and a dynamic "Frequently Used" row calculated automatically from your actual usage count!
-* **Selected Tests Chips**: Displays active diagnostic items as checked filter chips. Tap any chip to instantly remove the test and update the running total.
-* **Clear-on-Select**: Typing search results, selecting an item, and adding it instantly clears the search query to make room for your next selection.
-
-### 2. 📲 Multi-Device Self-Hosted OTA Updates
-* **Immediate Check on Startup**: When launched, the app initiates an asynchronous background query to check a custom cloud updates URL.
-* **passcode PIN Locked Config**: Settings are fully locked via an administrative PIN passcode to prevent unauthorized modifications.
-* **Manual Check for Update Button**: Includes a manual check tool with real-time progress (`Checking...`, `Up to date (v1.3.1)`, `Network connection failed`, or `Update Available`).
-* **Contextual In-App Installation**: If an update is detected, an **"Install Update"** action button displays inside the settings card to download and install the package without leaving the app.
-
-### 3. 💳 Dynamic UPI QR & Custom Merchant QR Uploads
-* **Offline Dynamic QR**: Automatically draws a vector Canvas QR code using the patient's exact bill and your static UPI parameters offline.
-* **Custom static QR Image**: Admin settings allow you to upload your laboratory's static merchant QR code image directly from the gallery. If uploaded, PathoFlow displays this custom business image on checkout screens dynamically!
-
-### 4. 📷 Native Transaction Screenshot Capture
-* **Physical Payment Proof**: Added a **"Take Photo of Transaction Screen"** action inside checkout success dialogs.
-* **FileProvider Integration**: Securely launches the native system camera and caches the confirmation thumbnail.
-* **Multimodal WhatsApp Share**: Attaches the payment confirmation photograph alongside the beautifully structured markdown patient details in one single transmit command!
-
-### 5. 📂 Automated Factory Pricing Seeding
-* **Quoted CSV Importing**: Optimized CSV directory reader handles complex quoted lists containing inner commas without breaking schemas.
-* **Smart Keyword Mapping**: Imported diagnostics automatically map to medical categories (Hematology, Biochemistry, Hormones, Packages, Serology) based on test naming structures.
+## 🚀 Key Clinical Upgrades (Auth-Removal & Simplification)
+PathoFlow is optimized as a **single-user companion app**, stripping vestigial multi-user modules to simplify field phlebotomy:
+* **No Authentication Friction**: Removed redundant admin login prompts, Universal backdoor passcodes (`"1234"`), profile cards, and logout fields from settings.
+* **Database Preservation**: Retained identical Room DB schema columns (`users` / `adminPin` tables) to prevent migrations and ensure all existing patients are fully preserved.
+* **Automatic Collection Sign-Off**: The `collectedBy` parameter dynamically signs entries with your configured laboratory branding instead of a logged-in user session.
 
 ---
 
-## 🛠️ Technology Stack
-* **Language**: Kotlin 1.9+ (Jetpack Compose)
-* **Design Guidelines**: Material Design 3 (Clinician Theme)
-* **Database**: Room Database (SQLite Engine)
-* **Multithreading**: Kotlin Coroutines & Flows
-* **Build tool**: Gradle Kotlin DSL (`.kts`)
+## 🎨 Premium Visual Aesthetics
+* **Vibrant Medical Gradients**: Splash and onboarding setup screens render clinical vertical gradients.
+* **Rounded Card Outlines**: Metric cards, patient list items, and form containers use unified `RoundedCornerShape(16.dp)` shapes with soft borders.
+* **Primary CTAs**: Main dashboard triggers (like "New Patient Entry") stand out with primary-to-tertiary gradients.
+* **Transparent Badge Indicators**: Action items use transparent badges and soft background circle shapes.
+
+---
+
+## 🧪 Comprehensive Unit Testing
+We added a robust automated testing suite using **Robolectric** to cover core diagnostic and tracking logic:
+* 🧪 [LabViewModelTest.kt](file:///Users/hastjoshi/antigravity/PathoFlow/app/src/test/java/com/example/LabViewModelTest.kt) validates:
+  * Patient ID generation formatting (`ALC-YYYYMMDD-suffix`) and uniqueness under load.
+  * Diagnostic search selections, automatic price total calculations, and clear-on-select operations.
+  
+To run the automated test suite locally:
+```bash
+./gradlew testDebugUnitTest
+```
 
 ---
 
@@ -64,7 +60,7 @@ PathoFlow is designed with a premium, state-of-the-art medical clinic layout:
 * Jetpack Runtime (JBR compiler Java 11+)
 
 ### Compile via Terminal
-To build and package a signed clinical binary (`PathoFlow.apk`) locally in your workspace:
+To build and package the production-ready OTA update APK (`PathoFlow.apk`) in your workspace:
 ```bash
 # Set JBR compiler environment and run Gradle build
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" gradle assembleDebug
@@ -81,8 +77,8 @@ PathoFlow checks for updates by fetching a simple `version.json` file hosted on 
 ### version.json Schema
 ```json
 {
-  "versionCode": 5,
-  "versionName": "1.3.1",
+  "versionCode": 6,
+  "versionName": "1.4.0",
   "apkUrl": "https://hastjosh1.github.io/pathoflow/PathoFlow.apk"
 }
 ```
