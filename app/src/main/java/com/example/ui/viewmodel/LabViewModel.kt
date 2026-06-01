@@ -29,13 +29,6 @@ class LabViewModel(
     private val repository: LabRepository
 ) : AndroidViewModel(application) {
 
-    // Login/Session State
-    private val _currentUser = MutableStateFlow<User?>(null)
-    val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
-
-    private val _isLoggedIn = MutableStateFlow(false)
-    val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
-
     private val _isConfigured = MutableStateFlow(false)
     val isConfigured: StateFlow<Boolean> = _isConfigured.asStateFlow()
 
@@ -72,13 +65,6 @@ class LabViewModel(
         )
 
     val allTests: StateFlow<List<TestItem>> = repository.allTests
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
-
-    val allUsers: StateFlow<List<User>> = repository.allUsers
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -223,43 +209,6 @@ class LabViewModel(
         }
     }
 
-    // Login workflow
-    fun attemptLogin(username: String, pin: String, rememberMe: Boolean, onResult: (Boolean, String) -> Unit) {
-        viewModelScope.launch {
-            val user = repository.getUserByUsername(username.trim().lowercase())
-            if (user != null) {
-                if (user.passwordHash == pin.trim()) {
-                    _currentUser.value = user
-                    _isLoggedIn.value = true
-                    
-                    if (rememberMe) {
-                        val sp = getApplication<Application>().getSharedPreferences("accurate_lab_prefs", Context.MODE_PRIVATE)
-                        sp.edit()
-                            .putString("remembered_username", user.username)
-                            .putString("remembered_role", user.role)
-                            .putString("remembered_display_name", user.displayName)
-                            .apply()
-                    }
-                    
-                    onResult(true, "Login Successful")
-                    _currentNavDestination.value = "dashboard"
-                } else {
-                    onResult(false, "Incorrect security PIN!")
-                }
-            } else {
-                onResult(false, "User not found!")
-            }
-        }
-    }
-
-    fun logout() {
-        val sp = getApplication<Application>().getSharedPreferences("accurate_lab_prefs", Context.MODE_PRIVATE)
-        sp.edit().clear().apply()
-        _currentUser.value = null
-        _isLoggedIn.value = false
-        _currentNavDestination.value = "login"
-    }
-
     // Toggle language (English <-> Gujarati)
     fun toggleLanguage() {
         viewModelScope.launch {
@@ -346,7 +295,7 @@ class LabViewModel(
                     amountPaid = amountPaid,
                     balanceAmount = balanceAmount,
                     dateString = dateStr,
-                    collectedBy = _currentUser.value?.displayName ?: "Phlebotomist",
+                    collectedBy = settingsState.value.labUpiName.ifBlank { "Lab Staff" },
                     isVoiceInputUsed = voiceInputUsed
                 )
                 
@@ -382,16 +331,14 @@ class LabViewModel(
     fun saveAppSettings(
         upiId: String,
         upiName: String,
-        whatsappNumbers: String,
-        adminPin: String
+        whatsappNumbers: String
     ) {
         viewModelScope.launch {
             val current = settingsState.value
             val updated = current.copy(
                 labUpiId = upiId.trim(),
                 labUpiName = upiName.trim(),
-                labWhatsAppNumbersString = whatsappNumbers.trim(),
-                adminPin = adminPin.trim()
+                labWhatsAppNumbersString = whatsappNumbers.trim()
             )
             repository.saveSettings(updated)
         }
@@ -413,36 +360,6 @@ class LabViewModel(
     fun deleteTest(test: TestItem) {
         viewModelScope.launch {
             repository.deleteTest(test)
-        }
-    }
-
-    // User / Phlebotomist Administration
-    fun saveUser(user: User) {
-        viewModelScope.launch {
-            repository.saveUser(user)
-        }
-    }
-
-    fun deleteUser(user: User) {
-        viewModelScope.launch {
-            repository.deleteUser(user)
-        }
-    }
-
-    fun updateProfile(displayName: String, pin: String) {
-        val user = _currentUser.value ?: return
-        viewModelScope.launch {
-            val updated = user.copy(displayName = displayName.trim(), passwordHash = pin.trim())
-            repository.saveUser(updated)
-            _currentUser.value = updated
-            
-            // Also update SharedPreferences if rememberMe was used
-            val sp = getApplication<Application>().getSharedPreferences("accurate_lab_prefs", Context.MODE_PRIVATE)
-            if (sp.contains("remembered_username")) {
-                sp.edit()
-                    .putString("remembered_display_name", updated.displayName)
-                    .apply()
-            }
         }
     }
 
