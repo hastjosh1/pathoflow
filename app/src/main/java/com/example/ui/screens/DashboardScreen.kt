@@ -70,7 +70,7 @@ fun DashboardScreen(viewModel: LabViewModel) {
     var downloadError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(currentUpdateUrl) {
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 if (currentUpdateUrl.isNotBlank()) {
                     val url = java.net.URL(currentUpdateUrl)
@@ -204,18 +204,11 @@ fun DashboardScreen(viewModel: LabViewModel) {
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .height(112.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(
-                                androidx.compose.ui.graphics.Brush.linearGradient(
-                                    colors = listOf(
-                                        MaterialTheme.colorScheme.primary,
-                                        MaterialTheme.colorScheme.tertiary
-                                    )
-                                )
-                            )
+                            .height(128.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(MaterialTheme.colorScheme.primary)
                             .clickable { viewModel.navigateTo("new_entry") }
-                            .padding(12.dp),
+                            .padding(16.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(
@@ -252,8 +245,8 @@ fun DashboardScreen(viewModel: LabViewModel) {
             item {
                 Text(
                     text = "Quick Actions",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
@@ -312,8 +305,9 @@ fun DashboardScreen(viewModel: LabViewModel) {
                     )
                 }
             } else {
-                items(patients.take(10)) { patient ->
+                items(patients.take(10), key = { it.id }) { patient ->
                     PatientItemCard(
+                        modifier = Modifier.animateItem(),
                         patient = patient,
                         activeLang = activeLang,
                         onSendWhatsApp = { context, p ->
@@ -321,19 +315,13 @@ fun DashboardScreen(viewModel: LabViewModel) {
                         },
                         onDuplicate = { p ->
                             // Preload test selections & navigate to fill form
-                            val matchingTests = viewModel.allTests.value.filter { test ->
-                                p.selectedTestIdsJson.contains(test.id.toString())
-                            }
-                            viewModel.setTestSelection(matchingTests)
+                            viewModel.setTestSelection(viewModel.testsForPatient(p))
                             // We can use a shared state or navigations to copy fields.
                             // To keep it clean, let's provide duplicating on the patient screen
                             viewModel.navigateTo("new_entry_dup_${p.id}")
                         },
                         onEdit = { p ->
-                            val matchingTests = viewModel.allTests.value.filter { test ->
-                                p.selectedTestIdsJson.contains(test.id.toString())
-                            }
-                            viewModel.setTestSelection(matchingTests)
+                            viewModel.setTestSelection(viewModel.testsForPatient(p))
                             viewModel.navigateTo("edit_entry_${p.id}")
                         }
                     )
@@ -367,10 +355,10 @@ fun DashboardScreen(viewModel: LabViewModel) {
                 text = {
                     Column {
                         if (isDownloading) {
-                            Text("Downloading PathoFlow Version $latestVersionName directly to your device...", fontSize = 13.sp)
+                            Text("Downloading Accurate Lab App Version $latestVersionName directly to your device...", fontSize = 13.sp)
                             Spacer(modifier = Modifier.height(16.dp))
                             LinearProgressIndicator(
-                                progress = downloadProgress,
+                                progress = { downloadProgress },
                                 modifier = Modifier.fillMaxWidth(),
                                 color = MaterialTheme.colorScheme.primary,
                                 trackColor = MaterialTheme.colorScheme.surfaceVariant
@@ -394,7 +382,7 @@ fun DashboardScreen(viewModel: LabViewModel) {
                                 )
                             }
                         } else {
-                            Text("A fresh new update (Version $latestVersionName) is ready for PathoFlow.", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                            Text("A fresh new update (Version $latestVersionName) is ready for the Accurate Lab app.", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                             Spacer(modifier = Modifier.height(8.dp))
                             Text("This internal update includes critical workflow optimizations, logo assets, and new diagnostic test listings.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -477,42 +465,41 @@ fun MetricCard(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier
-            .height(112.dp)
-            .border(1.dp, color.copy(alpha = 0.15f), RoundedCornerShape(16.dp)),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        modifier = modifier.height(128.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(14.dp),
+                .padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = title, 
-                    fontSize = 11.sp, 
-                    fontWeight = FontWeight.Bold, 
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f).padding(end = 4.dp),
-                    maxLines = 2
-                )
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .background(color.copy(alpha = 0.1f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(imageVector = icon, contentDescription = title, tint = color, modifier = Modifier.size(18.dp))
-                }
+                Icon(imageVector = icon, contentDescription = title, tint = color, modifier = Modifier.size(22.dp))
             }
-            Text(text = value, fontSize = 20.sp, fontWeight = FontWeight.Black, color = color)
+            Column {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
@@ -524,16 +511,38 @@ fun QuickButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    OutlinedButton(
+    Surface(
         onClick = onClick,
-        modifier = modifier.height(48.dp),
-        shape = RoundedCornerShape(8.dp),
-        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+        modifier = modifier.height(84.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(imageVector = icon, contentDescription = text, modifier = Modifier.size(16.dp))
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(text = text, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Column(
+            modifier = Modifier.padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = text,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

@@ -11,11 +11,16 @@ import androidx.lifecycle.viewModelScope
 import com.example.LabApplication
 import com.example.data.model.AppSettings
 import com.example.data.model.PatientEntry
+import com.example.data.model.PriceList
+import com.example.data.model.PriceOverride
 import com.example.data.model.TestItem
 import com.example.data.model.User
 import com.example.data.repository.LabRepository
+import com.example.data.util.PatientJson
+import com.example.data.util.TestSnapshot
 import com.example.ui.translation.Language
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -64,8 +69,46 @@ class LabViewModel(
             initialValue = emptyList()
         )
 
-    val allTests: StateFlow<List<TestItem>> = repository.allTests
+    // Tests with their standard (base) prices, straight from the DB.
+    val standardTests: StateFlow<List<TestItem>> = repository.allTests
         .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    // ----- Price lists -----
+    // Active list id: 0 = built-in "Standard" (TestItem.price), otherwise a
+    // PriceList row. Persisted so the choice survives app restarts.
+    private val _activePriceListId = MutableStateFlow(0)
+    val activePriceListId: StateFlow<Int> = _activePriceListId.asStateFlow()
+
+    val allPriceLists: StateFlow<List<PriceList>> = repository.allPriceLists
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    // testId -> overridden price for the active list (empty map on Standard).
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val activePriceOverrides: StateFlow<Map<Int, Double>> = _activePriceListId
+        .flatMapLatest { listId ->
+            if (listId == 0) flowOf(emptyList()) else repository.overridesForList(listId)
+        }
+        .map { overrides -> overrides.associate { it.testId to it.price } }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyMap()
+        )
+
+    // What every screen consumes: tests priced per the active list, so patient
+    // entry, running totals, snapshots and CSV export all bill from it.
+    val allTests: StateFlow<List<TestItem>> =
+        combine(standardTests, activePriceOverrides) { tests, overrides ->
+            tests.map { test -> overrides[test.id]?.let { test.copy(price = it) } ?: test }
+        }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
@@ -91,6 +134,17 @@ class LabViewModel(
     init {
         val sp = application.getSharedPreferences("accurate_lab_prefs", Context.MODE_PRIVATE)
         _customUpiQrPath.value = sp.getString("custom_upi_qr_path", null)
+        _activePriceListId.value = sp.getInt("active_price_list_id", 0)
+
+        // If the persisted active price list was deleted, fall back to Standard.
+        viewModelScope.launch {
+            repository.allPriceLists.collect { lists ->
+                val activeId = _activePriceListId.value
+                if (activeId != 0 && lists.none { it.id == activeId }) {
+                    setActivePriceList(0)
+                }
+            }
+        }
         _updateServerUrl.value = sp.getString("update_server_url", "https://hastjosh1.github.io/pathoflow/version.json") ?: "https://hastjosh1.github.io/pathoflow/version.json"
         val isConfiguredVal = sp.getBoolean("is_configured", false)
         _isConfigured.value = isConfiguredVal
@@ -244,6 +298,12 @@ class LabViewModel(
         _selectedTests.value = tests
     }
 
+    /** Tests belonging to a saved patient entry, matched by exact id. */
+    fun testsForPatient(patient: PatientEntry): List<TestItem> {
+        val ids = PatientJson.decodeIds(patient.selectedTestIdsJson).toSet()
+        return allTests.value.filter { it.id in ids }
+    }
+
     // Save Patient Entry (Create or Update)
     fun savePatientEntry(
         id: String,
@@ -266,14 +326,12 @@ class LabViewModel(
     ) {
         viewModelScope.launch {
             try {
-                // Prepare simple JSON serialized test elements
-                val testIds = _selectedTests.value.map { it.id }
-                val testIdsJson = "[" + testIds.joinToString(",") + "]"
-                
-                // Snapshots elements
-                val snapList = _selectedTests.value.map { "{\"name\":\"${it.name}\",\"price\":${it.price}}" }
-                val testSnapshotJson = "[" + snapList.joinToString(",") + "]"
-                
+                // Safe JSON serialization (Moshi) — handles quotes/commas in names.
+                val testIdsJson = PatientJson.encodeIds(_selectedTests.value.map { it.id })
+                val testSnapshotJson = PatientJson.encodeSnapshots(
+                    _selectedTests.value.map { TestSnapshot(it.name, it.price) }
+                )
+
                 val dateStr = SimpleDateFormat("dd-MM-yyyy hh:mm a", Locale.getDefault()).format(Date())
                 
                 val entry = PatientEntry(
@@ -359,7 +417,96 @@ class LabViewModel(
 
     fun deleteTest(test: TestItem) {
         viewModelScope.launch {
-            repository.deleteTest(test)
+            repository.deleteTestsByIds(listOf(test.id))
+        }
+    }
+
+    // Bulk delete for multi-select in Manage Tests (also clears their
+    // price-list overrides).
+    fun deleteTests(ids: Collection<Int>) {
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            repository.deleteTestsByIds(ids.toList())
+        }
+    }
+
+    // ----- Price list administration -----
+    fun setActivePriceList(id: Int) {
+        val sp = getApplication<Application>().getSharedPreferences("accurate_lab_prefs", Context.MODE_PRIVATE)
+        sp.edit().putInt("active_price_list_id", id).apply()
+        _activePriceListId.value = id
+    }
+
+    /**
+     * Create a price list and switch to it. With [percentAdjustment] set
+     * (e.g. -20.0 for a 20% discount), every test gets an override of
+     * standard price adjusted by that percent, rounded to the rupee;
+     * otherwise the list starts identical to Standard and individual
+     * prices can be edited per test.
+     */
+    fun addPriceList(name: String, percentAdjustment: Double? = null) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        viewModelScope.launch {
+            val newId = repository.insertPriceList(PriceList(name = trimmed)).toInt()
+            if (percentAdjustment != null && percentAdjustment != 0.0) {
+                val factor = 1 + (percentAdjustment / 100.0)
+                val overrides = standardTests.value.map { test ->
+                    PriceOverride(
+                        priceListId = newId,
+                        testId = test.id,
+                        price = kotlin.math.round(test.price * factor).coerceAtLeast(0.0)
+                    )
+                }
+                repository.setPriceOverrides(overrides)
+            }
+            setActivePriceList(newId)
+        }
+    }
+
+    fun deletePriceList(priceList: PriceList) {
+        viewModelScope.launch {
+            repository.deletePriceList(priceList)
+            if (_activePriceListId.value == priceList.id) {
+                setActivePriceList(0)
+            }
+        }
+    }
+
+    /**
+     * Save from the Manage Tests dialog, honouring the active price list:
+     * on Standard the base test is updated; on a custom list the name and
+     * category still apply to the base test but the price becomes an
+     * override for that list only.
+     */
+    fun upsertTestForActiveList(existing: TestItem?, name: String, price: Double, category: String) {
+        viewModelScope.launch {
+            val listId = _activePriceListId.value
+            if (existing == null) {
+                // New tests always define their standard price; a custom list
+                // also gets an override so it shows exactly what was typed.
+                val newId = repository.insertTest(TestItem(name = name.trim(), price = price, category = category)).toInt()
+                if (listId != 0) {
+                    repository.setPriceOverride(listId, newId, price)
+                }
+            } else {
+                val base = repository.getTestById(existing.id) ?: return@launch
+                if (listId == 0) {
+                    repository.updateTest(base.copy(name = name.trim(), price = price, category = category))
+                } else {
+                    repository.updateTest(base.copy(name = name.trim(), category = category))
+                    repository.setPriceOverride(listId, existing.id, price)
+                }
+            }
+        }
+    }
+
+    /** Remove a custom-list override so the test bills at standard price again. */
+    fun resetPriceToStandard(testId: Int) {
+        val listId = _activePriceListId.value
+        if (listId == 0) return
+        viewModelScope.launch {
+            repository.removePriceOverride(listId, testId)
         }
     }
 

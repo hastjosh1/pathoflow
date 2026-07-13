@@ -52,7 +52,7 @@ fun SplashScreen(viewModel: LabViewModel) {
     
     LaunchedEffect(key1 = true) {
         startAnimation = true
-        delay(1800)
+        delay(1000)
         if (viewModel.isConfigured.value) {
             viewModel.navigateTo("dashboard")
         } else {
@@ -84,7 +84,7 @@ fun SplashScreen(viewModel: LabViewModel) {
             ) {
                 Image(
                     painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.pathoflow_logo),
-                    contentDescription = "PathoFlow Logo",
+                    contentDescription = "Accurate Lab Logo",
                     modifier = Modifier
                         .size(140.dp)
                         .clip(CircleShape)

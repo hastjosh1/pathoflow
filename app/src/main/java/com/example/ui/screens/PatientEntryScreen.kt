@@ -347,6 +347,35 @@ fun PatientEntryScreen(viewModel: LabViewModel, originalPatientIdToDuplicateOrEd
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.primary
                     )
+
+                    // Billing follows the price list chosen in Manage Tests —
+                    // make it visible here so custom rates are never a surprise.
+                    val allPriceLists by viewModel.allPriceLists.collectAsState()
+                    val activePriceListId by viewModel.activePriceListId.collectAsState()
+                    val activePriceListName = allPriceLists.firstOrNull { it.id == activePriceListId }?.name
+                    if (activePriceListName != null) {
+                        Row(
+                            modifier = Modifier
+                                .padding(top = 6.dp)
+                                .background(MaterialTheme.colorScheme.tertiaryContainer, RoundedCornerShape(8.dp))
+                                .padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Filled.Sell,
+                                contentDescription = "Active price list",
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                "Billing at \"$activePriceListName\" prices",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
 
                     // Search tests input

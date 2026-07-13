@@ -3,6 +3,8 @@ package com.example.data.local
 import androidx.room.*
 import com.example.data.model.AppSettings
 import com.example.data.model.PatientEntry
+import com.example.data.model.PriceList
+import com.example.data.model.PriceOverride
 import com.example.data.model.TestItem
 import com.example.data.model.User
 import kotlinx.coroutines.flow.Flow
@@ -31,7 +33,7 @@ interface TestItemDao {
     suspend fun getTestById(id: Int): TestItem?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertTest(test: TestItem)
+    suspend fun insertTest(test: TestItem): Long
 
     @Update
     suspend fun updateTest(test: TestItem)
@@ -42,8 +44,41 @@ interface TestItemDao {
     @Query("UPDATE test_items SET usageCount = usageCount + 1 WHERE id = :id")
     suspend fun incrementUsageCount(id: Int)
 
+    @Query("DELETE FROM test_items WHERE id IN (:ids)")
+    suspend fun deleteTestsByIds(ids: List<Int>)
+
     @Query("DELETE FROM test_items")
     suspend fun clearAllTests()
+}
+
+@Dao
+interface PriceListDao {
+    @Query("SELECT * FROM price_lists ORDER BY name ASC")
+    fun getAllPriceListsFlow(): Flow<List<PriceList>>
+
+    @Insert
+    suspend fun insertPriceList(priceList: PriceList): Long
+
+    @Delete
+    suspend fun deletePriceList(priceList: PriceList)
+
+    @Query("SELECT * FROM price_overrides WHERE priceListId = :priceListId")
+    fun getOverridesForListFlow(priceListId: Int): Flow<List<PriceOverride>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertOverride(override: PriceOverride)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertOverrides(overrides: List<PriceOverride>)
+
+    @Query("DELETE FROM price_overrides WHERE priceListId = :priceListId AND testId = :testId")
+    suspend fun deleteOverride(priceListId: Int, testId: Int)
+
+    @Query("DELETE FROM price_overrides WHERE priceListId = :priceListId")
+    suspend fun clearOverridesForList(priceListId: Int)
+
+    @Query("DELETE FROM price_overrides WHERE testId IN (:testIds)")
+    suspend fun deleteOverridesForTests(testIds: List<Int>)
 }
 
 @Dao

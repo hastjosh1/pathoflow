@@ -127,7 +127,7 @@ fun OnboardingSetupScreen(viewModel: LabViewModel) {
             ) {
                 Image(
                     painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.pathoflow_logo),
-                    contentDescription = "PathoFlow Logo",
+                    contentDescription = "Accurate Lab Logo",
                     modifier = Modifier
                         .size(80.dp)
                         .clip(CircleShape)

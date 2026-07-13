@@ -4,9 +4,12 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.data.model.AppSettings
 import com.example.data.model.PatientEntry
+import com.example.data.model.PriceList
+import com.example.data.model.PriceOverride
 import com.example.data.model.TestItem
 import com.example.data.model.User
 import kotlinx.coroutines.CoroutineScope
@@ -14,8 +17,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @Database(
-    entities = [User::class, TestItem::class, PatientEntry::class, AppSettings::class],
-    version = 1,
+    entities = [User::class, TestItem::class, PatientEntry::class, AppSettings::class, PriceList::class, PriceOverride::class],
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -23,10 +26,24 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun testItemDao(): TestItemDao
     abstract fun patientEntryDao(): PatientEntryDao
     abstract fun appSettingsDao(): AppSettingsDao
+    abstract fun priceListDao(): PriceListDao
 
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
+
+        // v1 -> v2: custom price lists. Additive only — existing patient and
+        // test data is untouched, so OTA updates keep field data intact.
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `price_lists` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `price_overrides` (`priceListId` INTEGER NOT NULL, `testId` INTEGER NOT NULL, `price` REAL NOT NULL, PRIMARY KEY(`priceListId`, `testId`))"
+                )
+            }
+        }
 
         fun getDatabase(context: Context, scope: CoroutineScope): AppDatabase {
             return INSTANCE ?: synchronized(this) {
@@ -36,6 +53,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "accurate_lab_database"
                 )
                 .addCallback(AppDatabaseCallback(scope))
+                .addMigrations(MIGRATION_1_2)
                 .build()
                 INSTANCE = instance
                 instance

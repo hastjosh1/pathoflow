@@ -40,6 +40,7 @@ import androidx.compose.ui.window.Dialog
 import com.example.data.model.AppSettings
 import com.example.data.model.PatientEntry
 import com.example.data.model.TestItem
+import com.example.data.util.PatientJson
 import com.example.ui.components.OfflineUpiQrCode
 import com.example.ui.translation.*
 import com.example.ui.viewmodel.LabViewModel
@@ -118,24 +119,27 @@ fun CustomTopAppBar(
     title: String,
     navigationIcon: @Composable (() -> Unit)? = null,
     actions: @Composable (() -> Unit)? = null,
-    containerColor: Color = MaterialTheme.colorScheme.surface
+    containerColor: Color = MaterialTheme.colorScheme.background
 ) {
+    // Flat, quiet toolbar: sits on the canvas with no tint or elevation,
+    // large confident title.
     Surface(
         color = containerColor,
-        tonalElevation = 3.dp,
         modifier = Modifier.fillMaxWidth().height(64.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (navigationIcon != null) {
                 navigationIcon()
+                Spacer(modifier = Modifier.width(4.dp))
+            } else {
+                Spacer(modifier = Modifier.width(4.dp))
             }
-            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -163,22 +167,12 @@ fun HeaderToolbar(viewModel: LabViewModel, titleKey: String) {
                 modifier = androidx.compose.ui.Modifier.padding(end = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Language Fast Switcher Header Tool
-                IconButton(
-                    onClick = { viewModel.toggleLanguage() },
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), CircleShape)
-                ) {
-                    Icon(Icons.Filled.Language, contentDescription = "Switch Fast Language", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                // Language Fast Switcher Header Tool — bare icons, no chips
+                IconButton(onClick = { viewModel.toggleLanguage() }, modifier = Modifier.size(44.dp)) {
+                    Icon(Icons.Filled.Language, contentDescription = "Switch Fast Language", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
                 }
-                IconButton(
-                    onClick = { viewModel.navigateTo("settings") },
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), CircleShape)
-                ) {
-                    Icon(Icons.Filled.Settings, contentDescription = "Configure Lab", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                IconButton(onClick = { viewModel.navigateTo("settings") }, modifier = Modifier.size(44.dp)) {
+                    Icon(Icons.Filled.Settings, contentDescription = "Configure Lab", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
                 }
             }
         }
@@ -194,9 +188,9 @@ fun EmptyStatePlaceholder(text: String, icon: androidx.compose.ui.graphics.vecto
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(imageVector = icon, contentDescription = "Blank List", modifier = Modifier.size(54.dp), tint = Color.Gray.copy(alpha = 0.5f))
+        Icon(imageVector = icon, contentDescription = "Blank List", modifier = Modifier.size(54.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
         Spacer(modifier = Modifier.height(12.dp))
-        Text(text = text, fontSize = 12.sp, textAlign = TextAlign.Center, color = Color.Gray, modifier = Modifier.padding(horizontal = 24.dp))
+        Text(text = text, fontSize = 12.sp, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 24.dp))
     }
 }
 
@@ -207,18 +201,13 @@ fun PatientItemCard(
     activeLang: Language,
     onSendWhatsApp: (Context, PatientEntry) -> Unit,
     onDuplicate: (PatientEntry) -> Unit,
-    onEdit: (PatientEntry) -> Unit
+    onEdit: (PatientEntry) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     
-    // Setup Badge styling color indicators depending on collectionType and payment tracking
-    val statusColor = when(patient.collectionStatus) {
-        "Sample Collected" -> Color(0xFF1565C0)
-        "Sent to Lab" -> Color(0xFFEF6C00)
-        "Report Ready" -> Color(0xFF2E7D32)
-        else -> Color.DarkGray
-    }
-
+    // Only payment carries color (it's the actionable signal); collection
+    // status stays neutral to keep the card quiet.
     val payColor = when(patient.paymentStatus) {
         "Paid" -> Color(0xFF2E7D32)
         "Partial" -> Color(0xFFE65100)
@@ -239,84 +228,90 @@ fun PatientItemCard(
     }
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
             .testTag("patient_card_${patient.id}"),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(18.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(patient.id, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                // Date time tag
-                Text(patient.dateString, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Surface(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        patient.id,
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+                Text(patient.dateString, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            Text(patient.name, fontWeight = FontWeight.Black, fontSize = 15.sp, maxLines = 1)
-            
+            Text(patient.name, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), maxLines = 1, overflow = TextOverflow.Ellipsis)
+
             Spacer(modifier = Modifier.height(4.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Age/Sex: ${patient.age}Y/${patient.sex.take(1)}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${patient.age}Y · ${patient.sex.take(1)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.width(12.dp))
-                Icon(Icons.Filled.MedicalServices, contentDescription = "Doc", modifier = Modifier.size(10.dp), tint = MaterialTheme.colorScheme.primary)
-                Spacer(modifier = Modifier.width(2.dp))
-                Text("Dr. ${patient.referredDoctor}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Filled.MedicalServices, contentDescription = "Doc", modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Dr. ${patient.referredDoctor}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
 
             if (patient.address.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.PinDrop, contentDescription = "Home Map Pin", modifier = Modifier.size(10.dp), tint = MaterialTheme.colorScheme.secondary)
+                    Icon(Icons.Filled.PinDrop, contentDescription = "Home Map Pin", modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.secondary)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(patient.address, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(patient.address, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Collection Status Badge
+                // Collection Status Badge — neutral chip
                 Surface(
-                    color = statusColor.copy(alpha = 0.12f),
-                    shape = RoundedCornerShape(8.dp)
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shape = RoundedCornerShape(10.dp)
                 ) {
                     Text(
-                        text = "Collection: $printStatus",
-                        color = statusColor,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        text = printStatus,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                     )
                 }
 
                 // Payment Status Badge
                 Surface(
                     color = payColor.copy(alpha = 0.12f),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(10.dp)
                 ) {
                     Text(
-                        text = "Payment: $printPayStatus (₹${patient.amountPayable.toInt()})",
+                        text = "$printPayStatus · ₹${patient.amountPayable.toInt()}",
                         color = payColor,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                     )
                 }
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 14.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
             // Action triggers bar
             Row(
@@ -329,32 +324,38 @@ fun PatientItemCard(
                     IconButton(
                         onClick = { onEdit(patient) },
                         modifier = Modifier
-                            .size(36.dp)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), CircleShape)
+                            .size(44.dp)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f), CircleShape)
                             .testTag("action_edit_${patient.id}")
                     ) {
-                        Icon(Icons.Filled.Edit, contentDescription = "Edit Details", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Filled.Edit, contentDescription = "Edit Details", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                     }
                     // Quick Recopy/Duplicate
                     IconButton(
                         onClick = { onDuplicate(patient) },
                         modifier = Modifier
-                            .size(36.dp)
-                            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.08f), CircleShape)
+                            .size(44.dp)
+                            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.10f), CircleShape)
                     ) {
-                        Icon(Icons.Filled.ContentCopy, contentDescription = "Duplicate Patient", tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Filled.ContentCopy, contentDescription = "Duplicate Patient", tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(20.dp))
                     }
                 }
 
                 // WhatsApp sender
-                IconButton(
+                Surface(
                     onClick = { onSendWhatsApp(context, patient) },
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(Color(0xFF25D366), CircleShape)
-                        .testTag("action_whatsapp_${patient.id}")
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFF25D366),
+                    modifier = Modifier.testTag("action_whatsapp_${patient.id}")
                 ) {
-                    Icon(Icons.Filled.Share, contentDescription = "Export to Lab WhatsApp", tint = Color.White, modifier = Modifier.size(16.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                    ) {
+                        Icon(Icons.Filled.Share, contentDescription = "Export to Lab WhatsApp", tint = Color.White, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Send", color = Color.White, style = MaterialTheme.typography.labelLarge)
+                    }
                 }
             }
         }
@@ -365,13 +366,12 @@ fun PatientItemCard(
 fun openWhatsAppWithPatient(context: Context, patient: PatientEntry, viewModel: LabViewModel, imageUri: android.net.Uri? = null) {
     try {
         // Build readable layout copy
-        val listTestsNames = if (patient.testsSnapshotJson != "[]" && patient.testsSnapshotJson.isNotEmpty()) {
-            val regex = "\"name\":\"([^\"]+)\"".toRegex()
-            regex.findAll(patient.testsSnapshotJson).map { it.groupValues[1] }.toList()
+        val snapshotNames = PatientJson.decodeSnapshots(patient.testsSnapshotJson).map { it.name }
+        val listTestsNames = if (snapshotNames.isNotEmpty()) {
+            snapshotNames
         } else {
-            viewModel.allTests.value.filter { test ->
-                patient.selectedTestIdsJson.contains(test.id.toString())
-            }.map { it.name }
+            val ids = PatientJson.decodeIds(patient.selectedTestIdsJson).toSet()
+            viewModel.allTests.value.filter { it.id in ids }.map { it.name }
         }
         
         val bodyContent = viewModel.formatWhatsAppMessage(patient, listTestsNames)
@@ -407,13 +407,12 @@ fun openWhatsAppWithPatient(context: Context, patient: PatientEntry, viewModel: 
                 val numbersList = viewModel.settingsState.value.labWhatsAppNumbersString.split(",")
                 val targetNum = numbersList.firstOrNull()?.trim() ?: "919876543210"
                 val cleanNumber = targetNum.replace("+", "").replace(" ", "").trim()
-                val listTestsNames = if (patient.testsSnapshotJson != "[]" && patient.testsSnapshotJson.isNotEmpty()) {
-                    val regex = "\"name\":\"([^\"]+)\"".toRegex()
-                    regex.findAll(patient.testsSnapshotJson).map { it.groupValues[1] }.toList()
+                val snapshotNames = PatientJson.decodeSnapshots(patient.testsSnapshotJson).map { it.name }
+                val listTestsNames = if (snapshotNames.isNotEmpty()) {
+                    snapshotNames
                 } else {
-                    viewModel.allTests.value.filter { test ->
-                        patient.selectedTestIdsJson.contains(test.id.toString())
-                    }.map { it.name }
+                    val ids = PatientJson.decodeIds(patient.selectedTestIdsJson).toSet()
+                    viewModel.allTests.value.filter { it.id in ids }.map { it.name }
                 }
                 val bodyContent = viewModel.formatWhatsAppMessage(patient, listTestsNames)
                 val encodedMsg = java.net.URLEncoder.encode(bodyContent, "UTF-8")

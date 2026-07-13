@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -160,26 +161,21 @@ fun ReportsScreen(viewModel: LabViewModel) {
 
                 if (patients.isEmpty()) {
                     item {
-                        EmptyStatePlaceholder(text = "No collection registers available to prepare analytics reports.", icon = Icons.Filled.ListAlt)
+                        EmptyStatePlaceholder(text = "No collection registers available to prepare analytics reports.", icon = Icons.AutoMirrored.Filled.ListAlt)
                     }
                 } else {
-                    items(patients) { patient ->
+                    items(patients, key = { it.id }) { patient ->
                         PatientItemCard(
+                            modifier = Modifier.animateItem(),
                             patient = patient,
                             activeLang = activeLang,
                             onSendWhatsApp = { ctx, p -> openWhatsAppWithPatient(ctx, p, viewModel) },
                             onDuplicate = { p -> 
-                                val matchingTests = viewModel.allTests.value.filter { test ->
-                                    p.selectedTestIdsJson.contains(test.id.toString())
-                                }
-                                viewModel.setTestSelection(matchingTests)
+                                viewModel.setTestSelection(viewModel.testsForPatient(p))
                                 viewModel.navigateTo("new_entry_dup_${p.id}")
                             },
                             onEdit = { p ->
-                                val matchingTests = viewModel.allTests.value.filter { test ->
-                                    p.selectedTestIdsJson.contains(test.id.toString())
-                                }
-                                viewModel.setTestSelection(matchingTests)
+                                viewModel.setTestSelection(viewModel.testsForPatient(p))
                                 viewModel.navigateTo("edit_entry_${p.id}")
                             }
                         )

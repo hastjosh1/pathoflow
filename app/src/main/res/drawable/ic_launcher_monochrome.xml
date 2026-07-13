@@ -4,12 +4,7 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Pathology droplet -->
     <path
         android:fillColor="#FFFFFF"
         android:pathData="M54,26 C45,42 35,53 35,65 A19,19 0 1,0 73,65 C73,53 63,42 54,26 Z" />
-    <!-- ECG / flow pulse through the droplet -->
-    <path
-        android:fillColor="#006960"
-        android:pathData="M40,67 L48,67 L51,60 L55,77 L59,63 L61,67 L68,67 L68,70 L59.4,70 L56,79 L51.6,64 L49.4,70 L40,70 Z" />
 </vector>

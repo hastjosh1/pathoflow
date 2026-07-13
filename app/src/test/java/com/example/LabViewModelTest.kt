@@ -35,7 +35,7 @@ class LabViewModelTest {
             .allowMainThreadQueries()
             .build()
         val repository = LabRepository(
-            db.userDao(), db.testItemDao(), db.patientEntryDao(), db.appSettingsDao()
+            db.userDao(), db.testItemDao(), db.patientEntryDao(), db.appSettingsDao(), db.priceListDao()
         )
         viewModel = LabViewModel(app, repository)
     }

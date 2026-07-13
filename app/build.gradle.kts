@@ -39,9 +39,14 @@ android {
   buildTypes {
     release {
       isCrunchPngs = false
-      isMinifyEnabled = false
+      // R8 + resource shrinking: dramatically smoother Compose performance,
+      // especially on older hardware, and a much smaller APK.
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfig = signingConfigs.getByName("release")
+      // OTA constraint: every distributed build so far is signed with the
+      // debug keystore, and update APKs must match the installed signature.
+      signingConfig = signingConfigs.getByName("debugConfig")
     }
     debug {
       signingConfig = signingConfigs.getByName("debugConfig")

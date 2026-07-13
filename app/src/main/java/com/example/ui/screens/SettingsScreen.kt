@@ -294,7 +294,7 @@ fun SettingsScreen(viewModel: LabViewModel) {
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "Specify your internal secure cloud directory URL hosting the `version.json` file. PathoFlow checks this URL on startup to prompt phlebotomists with instant updates offline/online.",
+                        text = "Specify your internal secure cloud directory URL hosting the `version.json` file. The app checks this URL on startup to prompt phlebotomists with instant updates offline/online.",
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

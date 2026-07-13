@@ -15,7 +15,8 @@ class LabApplication : Application() {
             database.userDao(),
             database.testItemDao(),
             database.patientEntryDao(),
-            database.appSettingsDao()
-        ) 
+            database.appSettingsDao(),
+            database.priceListDao()
+        )
     }
 }

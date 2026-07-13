@@ -22,6 +22,23 @@ data class TestItem(
     val usageCount: Int = 0
 )
 
+// A named rate card (e.g. "B2B", "Dr. Shah Rates"). The built-in "Standard"
+// list is NOT stored here — it is TestItem.price itself (id 0 in the UI).
+@Entity(tableName = "price_lists")
+data class PriceList(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val name: String
+)
+
+// Per-test price in a custom price list. Tests without an override row
+// fall back to their standard TestItem.price.
+@Entity(tableName = "price_overrides", primaryKeys = ["priceListId", "testId"])
+data class PriceOverride(
+    val priceListId: Int,
+    val testId: Int,
+    val price: Double
+)
+
 @Entity(tableName = "patient_entries")
 data class PatientEntry(
     @PrimaryKey val id: String, // Generates e.g., "ALC-20260526-0001" or unique time-based String
